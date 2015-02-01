@@ -42,7 +42,7 @@ RIGHT_MOTOR_REVERSED);
 
 Sonar sonar(SONAR_TRIGGER_PIN, SONAR_ECHO_PIN);
 
-double upSpeedFactor = 1, downSpeedFactor = 0.75;
+double upSpeedFactor = 1, downSpeedFactor = 0.5;
 int moveDirection = 0;
 bool moving = false;
 double currentHeight = 0;

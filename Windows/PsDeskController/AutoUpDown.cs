@@ -1,39 +1,79 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+using System.Reactive.Subjects;
 using System.Threading;
-using System.Threading.Tasks;
-using System.Windows.Forms.VisualStyles;
 
 namespace PsDeskController
 {
     public class AutoUpDown
     {
-        readonly Timer _timer;
+        private readonly Timer _timer;
+        private readonly Timer _activityCheck;
 
         private bool _up = true;
-        private bool _enabled = false;
-        private int _upMinutes = 0;
-        private int _downMinutes = 0;
+        private bool _enabled;
+        private DateTimeOffset _originalChangeAgainAt = DateTimeOffset.MaxValue;
+        private DateTimeOffset _changeAgainAt = DateTimeOffset.MaxValue;
+        private DateTimeOffset? _inactiveSince;
+        private TimeSpan _upTime;
+        private TimeSpan _downTime;
         private readonly DeskController _controller;
         private readonly Action _preChangeWarning;
 
+        public Subject<DateTimeOffset?> NextChangeAtSubject { get; private set; }
+
         public AutoUpDown(DeskController controller, Action preChangeWarning)
         {
-            _timer = new Timer(TimerTick, this, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
+            _timer = new Timer(TimerTick, this, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+            _activityCheck = new Timer(ActivityTimerTick, this, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
             _controller = controller;
             _preChangeWarning = preChangeWarning;
+            NextChangeAtSubject = new Subject<DateTimeOffset?>();
         }
 
-        public void SetMode(bool enabled, int upMinutes, int downMinutes)
+        public void SetMode(bool enabled, TimeSpan upTime, TimeSpan downTime)
         {
             _enabled = enabled;
-            _upMinutes = upMinutes;
-            _downMinutes = downMinutes;
+            _upTime = upTime;
+            _downTime = downTime;
 
-            _up = true;
             ThreadPool.QueueUserWorkItem(o => ToggleDesk());
+            SetChangeAgainAtTime();
+        }
+
+        private void SetChangeAgainAtTime()
+        {
+            _changeAgainAt = DateTimeOffset.Now + (_up ? _upTime : _downTime);
+            _originalChangeAgainAt = _changeAgainAt;
+            NextChangeAtSubject.OnNext(_changeAgainAt);
+        }
+
+        private void PollDesk()
+        {
+            if (DateTimeOffset.Now < _changeAgainAt) return;
+
+            ToggleDesk();
+            SetChangeAgainAtTime();
+        }
+
+        private void PollActivity()
+        {
+            var idleForTicks = GetLastUserInput.GetIdleTickCount();
+            var isIdle = (idleForTicks > TimeSpan.TicksPerMinute);
+
+            if (_inactiveSince == null && isIdle)
+            {
+                _inactiveSince = DateTimeOffset.Now - TimeSpan.FromTicks(idleForTicks);
+            }
+            if (_inactiveSince != null && !isIdle)
+            {
+                _inactiveSince = null;
+            }
+
+            if (_inactiveSince != null)
+            {
+                _changeAgainAt = _originalChangeAgainAt + (DateTimeOffset.Now - _inactiveSince.Value);
+                NextChangeAtSubject.OnNext(_changeAgainAt);
+            }
         }
 
         private void ToggleDesk()
@@ -52,12 +92,10 @@ namespace PsDeskController
             if (_up)
             {
                 _controller.MoveUp();
-                _timer.Change(TimeSpan.FromMinutes(_upMinutes), TimeSpan.FromMinutes(_upMinutes));
             }
             else
             {
                 _controller.MoveDown();
-                _timer.Change(TimeSpan.FromMinutes(_downMinutes), TimeSpan.FromMinutes(_downMinutes));
             }
 
             _up = !_up;
@@ -65,7 +103,12 @@ namespace PsDeskController
 
         private static void TimerTick(object state)
         {
-            ((AutoUpDown)state).ToggleDesk();
+            ((AutoUpDown) state).PollDesk();
+        }
+
+        private static void ActivityTimerTick(object state)
+        {
+            ((AutoUpDown) state).PollActivity();
         }
     }
 }

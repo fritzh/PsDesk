@@ -1,10 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace PsDeskController
 {
@@ -19,12 +16,17 @@ namespace PsDeskController
             IsConnected = isConnected;
         }
     }
-    
+
     public class DeskController
     {
         public event EventHandler<StatusUpdateEventArgs> OnStatusUpdate;
 
         private readonly SerialCommunicator _communicator;
+
+        private Action<decimal> _levelListenerAction;
+
+        private Thread _levelListenerThread;
+        private CancellationTokenSource _levelListenerCancellationTokenSource;
 
         public DeskController()
         {
@@ -115,6 +117,44 @@ namespace PsDeskController
         public void MoveDown()
         {
             _communicator.Send("M0");
+        }
+
+        public void StartLevelFeed(Action<decimal> func)
+        {
+            _levelListenerAction = func;
+            _communicator.Send("F");
+
+            _levelListenerCancellationTokenSource = new CancellationTokenSource();
+            _levelListenerThread = new Thread(() => ListenForLevelInfo(_levelListenerCancellationTokenSource.Token));
+            _levelListenerThread.IsBackground = true;
+            _levelListenerThread.Start();
+        }
+
+        private void ListenForLevelInfo(CancellationToken cancellationToken)
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                try
+                {
+                    var phrase = _communicator.Expect(new Regex("^L=.*$"));
+                    var levelString = phrase.Split('=')[1].Split(' ')[0];
+                    _levelListenerAction(decimal.Parse(levelString));
+                }
+                finally
+                {
+                    Thread.Sleep(10);
+                }
+            }
+        }
+
+        public void StopLevelFeed()
+        {
+            _levelListenerCancellationTokenSource.Cancel();
+            _levelListenerThread.Join();
+            _communicator.Send("G");
+            _levelListenerCancellationTokenSource = null;
+            _levelListenerThread = null;
+            _levelListenerAction = null;
         }
     }
 }

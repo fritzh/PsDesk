@@ -1,21 +1,15 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace PsDeskController
 {
     public partial class MainForm : Form
     {
-        private DeskController _controller;
-        private AutoUpDown _autoUpDown;
+        private readonly DeskController _controller;
+        private readonly AutoUpDown _autoUpDown;
+        private IDisposable _nextChangeSubscription;
 
-        private delegate void StatusUpdateDelegate(string newStatus);
+        private delegate void StatusUpdateDelegate(StatusUpdateEventArgs args);
 
         public MainForm()
         {
@@ -25,17 +19,38 @@ namespace PsDeskController
             {
                 if (InvokeRequired)
                 {
-                    Invoke(new StatusUpdateDelegate((newStatus) => StatusLabel.Text = newStatus), args.NewStatus);
+                    Invoke(new StatusUpdateDelegate(UpdateFormStatus), args);
                     return;
                 }
 
-                StatusLabel.Text = args.NewStatus;
+                UpdateFormStatus(args);
             };
 
             _autoUpDown = new AutoUpDown(_controller, FlashWindow);
+            _nextChangeSubscription = _autoUpDown.NextChangeAtSubject.Subscribe(SetNextChangeLabel);
+        }
+
+        private void UpdateFormStatus(StatusUpdateEventArgs args)
+        {
+            StatusLabel.Text = args.NewStatus;
+            Enabled = args.IsConnected;
+        }
+
+        private delegate void SetNextChangeLabelDelegate(DateTimeOffset? nextChangeAt);
+
+        private void SetNextChangeLabel(DateTimeOffset? nextChangeAt)
+        {
+            if (InvokeRequired)
+            {
+                Invoke(new SetNextChangeLabelDelegate(SetNextChangeLabel), nextChangeAt);
+                return;
+            }
+
+            NextChangeLabel.Text = nextChangeAt == null ? "(Disabled)" : nextChangeAt.Value.ToString("h:mm:ss tt");
         }
 
         private delegate void FlashWindowDelegate();
+
         private void FlashWindow()
         {
             if (InvokeRequired)
@@ -84,7 +99,14 @@ namespace PsDeskController
 
         private void upDownEnabled_CheckedChanged(object sender, EventArgs e)
         {
-            _autoUpDown.SetMode(upDownEnabled.Checked, (int)upTimeSpinner.Value, (int)downTimeSpinner.Value);
+            _autoUpDown.SetMode(upDownEnabled.Checked, TimeSpan.FromMinutes((double) upTimeSpinner.Value),
+                TimeSpan.FromMinutes((double) downTimeSpinner.Value));
+        }
+
+        private void CalibrateButton_Click(object sender, EventArgs e)
+        {
+            var calibrationForm = new CalibrationForm(_controller);
+            calibrationForm.ShowDialog();
         }
     }
 }

@@ -2,21 +2,18 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO.Ports;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace PsDeskController
 {
-    class SerialCommunicator : IDisposable
+    internal class SerialCommunicator : IDisposable
     {
         private readonly string _heartbeatPhrase;
         private readonly SerialPort _port;
 
         public bool IsConnected { get; private set; }
-        public Queue<string> ReceiveQueue { get; private set; }
+        public Queue<string> ReceiveQueue { get; }
         public DateTime LastHeartbeatAt { get; private set; }
 
         public static string[] AvailablePorts
@@ -63,7 +60,7 @@ namespace PsDeskController
                 }
             }
         }
-        
+
         public bool AttemptConnect(string portName)
         {
             try
@@ -109,24 +106,37 @@ namespace PsDeskController
 
         public string Expect(string phrase, int timeout = 500)
         {
-            while (ReceiveQueue.Count == 0)
-            {
-                Thread.Sleep(10);
-            }
-
-            var readline = ReceiveQueue.Dequeue();
-            if (readline != phrase)
-            {
-                throw new Exception("Expected " + phrase + " but got " + readline + ".");
-            }
-
-            return readline;
+            return Expect(new Regex(Regex.Escape(phrase)), timeout);
         }
 
         public void Dispose()
         {
             IsConnected = false;
             _port.Dispose();
+        }
+
+        public string Expect(Regex regex, int timeout = 500)
+        {
+            var cancellationToken = new CancellationTokenSource(TimeSpan.FromMilliseconds(timeout)).Token;
+            while (true)
+            {
+                while (ReceiveQueue.Count == 0 && !cancellationToken.IsCancellationRequested)
+                {
+                    Thread.Sleep(10);
+                }
+
+                if (cancellationToken.IsCancellationRequested) return null;
+
+                var readline = ReceiveQueue.Dequeue();
+                if (!readline.Contains("=")) continue;
+
+                if (!regex.IsMatch(readline))
+                {
+                    throw new Exception("Expected string matching " + regex + " but got " + readline + ".");
+                }
+
+                return readline;
+            }
         }
     }
 }

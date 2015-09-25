@@ -35,6 +35,8 @@
             this.StopButton = new System.Windows.Forms.Button();
             this.StatusLabel = new System.Windows.Forms.Label();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
+            this.label6 = new System.Windows.Forms.Label();
+            this.NextChangeLabel = new System.Windows.Forms.Label();
             this.upDownEnabled = new System.Windows.Forms.CheckBox();
             this.label3 = new System.Windows.Forms.Label();
             this.downTimeSpinner = new System.Windows.Forms.NumericUpDown();
@@ -42,6 +44,7 @@
             this.label2 = new System.Windows.Forms.Label();
             this.upTimeSpinner = new System.Windows.Forms.NumericUpDown();
             this.label1 = new System.Windows.Forms.Label();
+            this.CalibrateButton = new System.Windows.Forms.Button();
             this.groupBox1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.downTimeSpinner)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.upTimeSpinner)).BeginInit();
@@ -110,6 +113,8 @@
             // 
             // groupBox1
             // 
+            this.groupBox1.Controls.Add(this.label6);
+            this.groupBox1.Controls.Add(this.NextChangeLabel);
             this.groupBox1.Controls.Add(this.upDownEnabled);
             this.groupBox1.Controls.Add(this.label3);
             this.groupBox1.Controls.Add(this.downTimeSpinner);
@@ -119,10 +124,27 @@
             this.groupBox1.Controls.Add(this.label1);
             this.groupBox1.Location = new System.Drawing.Point(136, 25);
             this.groupBox1.Name = "groupBox1";
-            this.groupBox1.Size = new System.Drawing.Size(180, 100);
+            this.groupBox1.Size = new System.Drawing.Size(180, 123);
             this.groupBox1.TabIndex = 6;
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "Automatic up-down";
+            // 
+            // label6
+            // 
+            this.label6.AutoSize = true;
+            this.label6.Location = new System.Drawing.Point(10, 92);
+            this.label6.Name = "label6";
+            this.label6.Size = new System.Drawing.Size(71, 13);
+            this.label6.TabIndex = 7;
+            this.label6.Text = "Next change:";
+            // 
+            // NextChangeLabel
+            // 
+            this.NextChangeLabel.Location = new System.Drawing.Point(87, 92);
+            this.NextChangeLabel.Name = "NextChangeLabel";
+            this.NextChangeLabel.Size = new System.Drawing.Size(87, 23);
+            this.NextChangeLabel.TabIndex = 7;
+            this.NextChangeLabel.Text = "(Disabled)";
             // 
             // upDownEnabled
             // 
@@ -215,11 +237,22 @@
             this.label1.TabIndex = 0;
             this.label1.Text = "Up for";
             // 
+            // CalibrateButton
+            // 
+            this.CalibrateButton.Location = new System.Drawing.Point(235, 195);
+            this.CalibrateButton.Name = "CalibrateButton";
+            this.CalibrateButton.Size = new System.Drawing.Size(75, 23);
+            this.CalibrateButton.TabIndex = 7;
+            this.CalibrateButton.Text = "Calibrate";
+            this.CalibrateButton.UseVisualStyleBackColor = true;
+            this.CalibrateButton.Click += new System.EventHandler(this.CalibrateButton_Click);
+            // 
             // MainForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(330, 230);
+            this.Controls.Add(this.CalibrateButton);
             this.Controls.Add(this.groupBox1);
             this.Controls.Add(this.StatusLabel);
             this.Controls.Add(this.StopButton);
@@ -255,6 +288,9 @@
         private System.Windows.Forms.Label label2;
         private System.Windows.Forms.NumericUpDown upTimeSpinner;
         private System.Windows.Forms.Label label1;
+        private System.Windows.Forms.Label label6;
+        private System.Windows.Forms.Label NextChangeLabel;
+        private System.Windows.Forms.Button CalibrateButton;
     }
 }
 
